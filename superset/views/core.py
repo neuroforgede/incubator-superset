@@ -1812,6 +1812,20 @@ class Superset(BaseSupersetView):
                         "superset/request_access/?" f"dashboard_id={dash.id}&"
                     )
 
+        if config["DASHBOARD_ALL_PERMISSIONS_OR_NO_DISPLAY"]:
+            missing_perm = False
+            for datasource in datasources:
+                if datasource and not security_manager.datasource_access(datasource):
+                    missing_perm = True
+            if missing_perm:
+                abort(403)
+
+        if config["DASHBOARD_REQRUIRE_OWNER"]:
+            Role = ab_models.Role
+            admin_role = session.query(Role).filter(Role.name == "Admin").one_or_none()
+            if not is_owner(dash, g.user) or admin_role in get_user_roles():
+                abort(403)
+
         # Filter out unneeded fields from the datasource payload
         datasources_payload = {
             datasource.uid: datasource.data_for_slices(slices)
